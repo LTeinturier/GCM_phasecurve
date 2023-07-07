@@ -34,7 +34,7 @@ def load_gcm(diagspec):
     for llo in range(lon.size):
         latrad[:,llo] = latrad[:,0]
     for lla in range(lat.size):
-        lonrad[lla,:] = lonrad[lla,0]
+        lonrad[lla,:] = lonrad[0,:]
         
     ##let's create the wavelength array (units: um)
     wl = 1.e4/wn
@@ -63,8 +63,10 @@ def compute_fp(dic):
     for tt in range(nphase):
         for lla in range(nlat):
             for llo in range(nlon):
-                scal[tt,lla,llo] = 1/np.pi * np.sin(dic['lat'][lla,llo])*np.cos(dic['lon'][lla,llo]+ls[tt])
+                scal[tt,lla,llo] = np.sin(dic['lat'][lla,llo])*np.cos(dic['lon'][lla,llo]+ls[tt])
                 if scal[tt,lla,llo] > 0: #if the phase is visible by observers
+                    if tt ==32:
+                        print(lla,llo)
                     fp[tt,:] +=dic['aire'][lla,llo]/np.sum(dic['aire']) * scal[tt,lla,llo]*dic['Fp'][:,lla,llo]
         ## flux conversion to W/m2/um
         fp[tt,:] = fp[tt,:]*1e-4*(1e4/dic['wl'])**2 #could be changed to just *= 1e4/(dic['wl']**2)
