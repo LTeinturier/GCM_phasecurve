@@ -21,8 +21,8 @@ def load_gcm(diagspec):
     
     ds.close()
     
-    ##let's do some time averaging 
-    OLR3d = np.mean(OLR3D,axis=0)
+    ##let's do some time averaging  + flipping spectral axis
+    OLR3d = np.flip(np.mean(OLR3D,axis=0),axis=0)
     
     ##let's create latrad and lonrad
     latrad = np.zeros((lat.size,lon.size))
@@ -37,7 +37,7 @@ def load_gcm(diagspec):
         lonrad[lla,:] = lonrad[0,:]
         
     ##let's create the wavelength array (units: um)
-    wl = 1.e4/wn
+    wl = 1.e4/np.flip(wn)
     res = {
         'lon':lonrad,
         'lat':latrad,
@@ -51,7 +51,7 @@ def load_gcm(diagspec):
 def compute_fp(dic):
     ##getting few constants, and initialising some arrays
     nphase = dic['Fp'].shape[-1] # If you want as many phase as longitude points. SHould become a tunable parameter
-    nlat = dic['Fp'].shape[-2]
+    nlat = dic['Fp'].shape[1]
     nlon = dic['Fp'].shape[-1]
     nwl = dic['wl'].size
     fp = np.zeros((nphase,nwl)) #the actual planetary flux
@@ -63,11 +63,11 @@ def compute_fp(dic):
     for tt in range(nphase):
         for lla in range(nlat):
             for llo in range(nlon):
-                scal[tt,lla,llo] = np.sin(dic['lat'][lla,llo])*np.cos(dic['lon'][lla,llo]+ls[tt])
+                scal[tt,lla,llo] = np.sin(dic['lat'][lla,llo])*np.cos(dic['lon'][lla,llo]+ls[tt])*1/np.pi
                 if scal[tt,lla,llo] > 0: #if the phase is visible by observers
-                    if tt ==32:
-                        print(lla,llo)
-                    fp[tt,:] +=dic['aire'][lla,llo]/np.sum(dic['aire']) * scal[tt,lla,llo]*dic['Fp'][:,lla,llo]
+                    # if tt ==32:
+                    #     print(lla,llo)
+                    fp[tt,:] +=dic['aire'][lla,llo]/dic['Rp']**2 * scal[tt,lla,llo]*dic['Fp'][:,lla,llo]
         ## flux conversion to W/m2/um
         fp[tt,:] = fp[tt,:]*1e-4*(1e4/dic['wl'])**2 #could be changed to just *= 1e4/(dic['wl']**2)
     return fp 
@@ -78,7 +78,7 @@ def stellar_flux(dic,file,bin=False):
     ## for later commits
     data = np.loadtxt(file,skiprows=1) #units are cm-1 & W/m2/cm-1
     fs = data[:,1]*1e-4*data[:,0]**2 #now units are W/m2/um
-    return fs 
+    return np.flip(fs) 
 
 
 def planet_to_star(dic):
