@@ -7,6 +7,8 @@ import astropy.constants as c
 import os 
 import sys 
 import exo_k as xk 
+import parameterReader as pR
+import argparse
 
 def load_gcm(diagspec):
     ## we load the data and appropriate fields
@@ -28,7 +30,7 @@ def load_gcm(diagspec):
     latrad = np.zeros((lat.size,lon.size))
     lonrad = np.zeros((lat.size,lon.size))
     latrad[:,0] = np.pi/2. + lat*np.pi/180. #this is actually co-latitude, not latitude
-    lonrad[0,:] = (lon+180.)*np.pi/180. #from [-180,180] to [0:360]
+    lonrad[0,:] = (lon+180.)*np.pi/180. #from [-180,180] to [0:360] mais en [0:2pi]
     #let's fill the other values. 
     # I know there's a fastest way (more pythonic) to do this, just can't remember it rn
     for llo in range(lon.size):
@@ -65,8 +67,6 @@ def compute_fp(dic):
             for llo in range(nlon):
                 scal[tt,lla,llo] = np.sin(dic['lat'][lla,llo])*np.cos(dic['lon'][lla,llo]+ls[tt])*1/np.pi
                 if scal[tt,lla,llo] > 0: #if the phase is visible by observers
-                    # if tt ==32:
-                    #     print(lla,llo)
                     fp[tt,:] +=dic['aire'][lla,llo]/dic['Rp']**2 * scal[tt,lla,llo]*dic['Fp'][:,lla,llo]
         ## flux conversion to W/m2/um
         fp[tt,:] = fp[tt,:]*1e-4*(1e4/dic['wl'])**2 #could be changed to just *= 1e4/(dic['wl']**2)
@@ -94,26 +94,46 @@ def saving(dic,output):
     ## I'm bored so this is gonna by .npy files
     np.save(output,dic)
     print('savet at', output)
-def main():
-    ##few stuff that will be moved to a paramter file at some points
-    save = True
-    path = '/home/lteinturier/Documents/PhD/wasp43b/pre-process-Pytmosph3R/from_mesopsl/Mg/1um/'
-    specgcm = 'diagspecIR_R500.nc' #par exemple
-    stellarfile = '/home/lteinturier/Documents/Post_process_GCM/LucasProcess/wasp43_star_gcm_corrk.dat' #par exemple
-    outputfile = os.path.join(path,'myoutput')
-    Rs = 0.667*u.Rsun.to(u.m) #obligé de le spécifier ici en hardcodant ?
     
+def input():
+    mypars = argparse.ArgumentParser(description="""Compute phase curve from GCM,
+                                     using the parameters from the parameter file 
+                                     given in argument of the run""",prog='phycurve')
+    mypars.add_argument("-i",type=str,help='input file',action='store')
+    arg =mypars.parse_args()
+    initfile = vars(arg)['i']
+    if initfile ==  None:
+        raise argparse.ArgumentError("I need a parameter file ! Give it to me with  -i name_of_file.par")
+
+    if '.par' not in initfile:
+        raise argparse.ArgumentTypeError("""the parameter file should be passed as an argument,
+                                         Give my the string of the name of the file as input,
+                                         with:  -i name_of_file.par""")
+    return pR.ParameterReader(initfile).dic
+def main():
+    ##get input parameters from the .par file 
+    params = input()
+    
+    #attribute the init paramters
+    save = params['save']
+    path = params['ipath']
+    specgcm =params['ifile']
+    stellarfile = params['stellar_file']
+    outputfile = os.path.join(params['opath'],params['ofile'])
+
     ## Loading data
     print("--- Loading data ---")
     dic = load_gcm(os.path.join(path,specgcm))
-    dic['Rs'] = Rs
-    
+    dic['Rs'] = params['Rs']*u.Rsun.to(u.m) 
+
     #compute planetary phase curve
     print("--- Computing Fp ---")
     dic['Fpcurve'] = compute_fp(dic)
+    
     ## compute stellar flux
     print("--- Computing Fs ---")
     dic['Fs'] = stellar_flux(dic,stellarfile)
+    
     ##compute Fp/Fs and spectra dilution
     print("--- Computing Fp/Fs ---")
     dic['Fratio'] = planet_to_star(dic)
