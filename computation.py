@@ -64,7 +64,7 @@ def compute_fp(dic):
     ## (or by a better dev than me)
     for tt in range(nphase):
         for lla in range(nlat):
-            for llo in range(nlon):
+            for llo in range(nlon-1):
                 scal[tt,lla,llo] = np.sin(dic['lat'][lla,llo])*np.cos(dic['lon'][lla,llo]+ls[tt])*1/np.pi
                 if scal[tt,lla,llo] > 0: #if the phase is visible by observers
                     fp[tt,:] +=dic['aire'][lla,llo]/dic['Rp']**2 * scal[tt,lla,llo]*dic['Fp'][:,lla,llo]
