@@ -1,0 +1,10 @@
+[Input]
+ipath ='mypath'
+ifile = 'input_file.nc'
+[Output]
+opath = 'lessgo/there/'
+ofile ='mysortie'
+save = True
+[Stellar]
+Rs = 0.667 #in Rsun
+stellar_file = 'monsoleil.txt'
